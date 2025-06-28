@@ -2,6 +2,7 @@
 
 #define SPEAKER_RX 10 // connects to DFPLayer TX pin
 #define SPEAKER_TX 11 // connects to DFPLayer RX pin
+#define SPEAKER_PIN 11
 
 #define NEOPIXEL_PIN 12 // Pin for NeoPixel data line
 #define NUMPIXELS 8 // Number of NeoPixels
@@ -106,7 +107,7 @@ void loop() {
     uint8_t numClosedConnections = getNumClosedConnections(connectionStates, numberOfConnections);
     bool allConnectionsClosed = false;
     if (numClosedConnections != previousNumClosedConnections) {
-      allConnectionsClosed = (numClosedConnections == numberOfConnections);
+      allConnectionsClosed = (numClosedConnections == 4);
     }
 
 
@@ -126,13 +127,16 @@ void loop() {
 
     // Run LED events based on the connection state changes
     if (connectionClosed) {
+      playConnectionClosedMelody(); // Play melody for connection closed
       runLEDEventConnectionClosed(); // Run LED event for connection closed
     }
     if (connectionOpened) {
+      playConnectionOpenedMelody(); // Play melody for connection opened
       runLEDEventConnectionOpened(); // Run LED event for connection opened
     }
 
     if(allConnectionsClosed) {
+      playFinishedMelody(); // Play melody when all connections are closed
       runLEDEventFinished(); // Run LED event when all connections are closed
     }
 
@@ -255,4 +259,49 @@ void modeRandomFlash(unsigned long duration) {
     hueShift = (hueShift + 3) % 256;
     delay(frameInterval);
   }
+}
+
+// Frequency definitions for common notes
+#define NOTE_C4  262
+#define NOTE_D4  294
+#define NOTE_E4  330
+#define NOTE_F4  349
+#define NOTE_G4  392
+#define NOTE_A4  440
+#define NOTE_B4  494
+#define NOTE_C5  523
+#define NOTE_D5  587
+#define NOTE_E5  659
+#define NOTE_F5  698
+#define NOTE_G5  784
+#define NOTE_A5  880
+#define NOTE_B5  988
+#define NOTE_C6  1047
+
+void playFinishedMelody() {
+  int melody[] = {NOTE_C5, NOTE_E5, NOTE_G5, NOTE_C6};
+  int durations[] = {4, 4, 4, 2};  // quarter notes and a half
+
+  for (int i = 0; i < 4; i++) {
+    int duration = 1000 / durations[i];
+    tone(SPEAKER_PIN, melody[i], duration);
+    delay(duration * 1.3);
+    noTone(SPEAKER_PIN);
+  }
+}
+
+void playConnectionClosedMelody() {
+  tone(SPEAKER_PIN, NOTE_E5, 100);
+  delay(120);
+  tone(SPEAKER_PIN, NOTE_G5, 100);
+  delay(120);
+  noTone(SPEAKER_PIN);
+}
+
+void playConnectionOpenedMelody() {
+  tone(SPEAKER_PIN, NOTE_G5, 100);
+  delay(120);
+  tone(SPEAKER_PIN, NOTE_E5, 100);
+  delay(120);
+  noTone(SPEAKER_PIN);
 }
