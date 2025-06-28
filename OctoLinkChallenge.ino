@@ -106,7 +106,7 @@ void loop() {
     uint8_t numClosedConnections = getNumClosedConnections(connectionStates, numberOfConnections);
     bool allConnectionsClosed = false;
     if (numClosedConnections != previousNumClosedConnections) {
-      allConnectionsClosed = (numClosedConnections == 4);
+      allConnectionsClosed = (numClosedConnections == numberOfConnections);
     }
 
 
