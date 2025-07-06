@@ -6,7 +6,7 @@
 #define SPEAKER_TX 11 // connects to DFPLayer RX pin
 
 #define NEOPIXEL_PIN 12 // Pin for NeoPixel data line
-#define NUMPIXELS 8 // Number of NeoPixels
+#define NUMPIXELS 20 // Number of NeoPixels
 
 
 #define CHECK_CONNECTION_INTERVAL 100 // Interval to check connections in milliseconds
@@ -113,18 +113,24 @@ void printConnectionStates() {
 }
 
 void playFinishedMelody() {
+  if(dfPlayerInitialized){
+    myDFPlayer.playMp3Folder(MP3_FILE_VICTORY);
+  }
   //myDFPlayer.playMp3Folder(MP3_FILE_WINNING);
   //myDFPlayer.playMp3Folder(MP3_FILE_FANFARE);
   //myDFPlayer.playMp3Folder(MP3_FILE_MAJESTIC);
-  myDFPlayer.playMp3Folder(MP3_FILE_VICTORY);
 }
 
 void playConnectionClosedMelody() {
-  myDFPlayer.playMp3Folder(MP3_FILE_SUCCESS);
+  if(dfPlayerInitialized){
+    myDFPlayer.playMp3Folder(MP3_FILE_SUCCESS);
+  }
 }
 
 void playConnectionOpenedMelody() {
-  myDFPlayer.playMp3Folder(MP3_FILE_FAILURE);
+  if(dfPlayerInitialized){
+    myDFPlayer.playMp3Folder(MP3_FILE_FAILURE);
+  }
 }
 
 // This function can be used to run an LED event when a connection is closed
@@ -164,7 +170,9 @@ void updateLEDs() {
   } else {
     pixels.clear(); 
     finalEffectActive = false;
-    myDFPlayer.pause(); // Stop the DFPlayer when the effect ends
+    if(dfPlayerInitialized){
+      myDFPlayer.pause(); // Stop the DFPlayer when the effect ends
+    }
     Serial.println("Final LED effect completed.");
   }
   pixels.show();
