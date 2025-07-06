@@ -10,6 +10,7 @@
 
 
 #define CHECK_CONNECTION_INTERVAL 100 // Interval to check connections in milliseconds
+#define EFFECT_DURATION 20000 // Duration of the final LED effect in milliseconds
 
 
 // Define different mp3 files
@@ -32,8 +33,13 @@ uint8_t connectionStates[numberOfConnections] = {0};
 uint8_t previousConnectionStates[numberOfConnections] = {0};
 
 unsigned long previousMillis = 0;
+unsigned long previousMillisLEDEffect = 0;
 // Animation frame interval (adjust as needed for smoothness)
 const unsigned long frameInterval = 100;
+unsigned long ledEffectStart = 0;
+bool finalEffectActive = false;
+int animationStep = 0;
+int hueShift = 0;
 
 Adafruit_NeoPixel pixels(NUMPIXELS, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
 
@@ -123,18 +129,45 @@ void playConnectionOpenedMelody() {
 
 // This function can be used to run an LED event when a connection is closed
 void runLEDEventConnectionClosed(){
+  finalEffectActive = false;
   showLEDSingleColor(pixels.Color(0, 255, 0), 500); // Show green color for 500 milliseconds
 }
 
 // This function can be used to run an LED event when a connection is opened
 void runLEDEventConnectionOpened(){
+  finalEffectActive = false;
   showLEDSingleColor(pixels.Color(255, 0, 0), 500); // Show red color for 500 milliseconds
 }
 
 void runLEDEventFinished() {
-  modeRandomFlash(5000); // Run the random flash mode for 5 seconds
-  pixels.clear(); // Clear NeoPixels after the event
-  pixels.show(); // Update the NeoPixels
+  ledEffectStart = millis();
+  finalEffectActive = true;
+}
+
+void updateLEDs() {
+  if (!finalEffectActive) return;
+
+  unsigned long now = millis();
+  // trigger the led animation every 100ms
+  if (now - ledEffectStart < EFFECT_DURATION) {
+    if (now - previousMillisLEDEffect >= frameInterval) {
+      previousMillisLEDEffect = now;
+      hueShift = (hueShift + 3) % 256; // Slowly change base hue for non-rainbow modes
+      // Change this to the desired LED effect mode
+      //modeRainbowChase();
+      //modeKnightRider();
+      //modeBlinkAll();
+      //modeColorWipe();
+      modeRandomFlash();
+      // You can also use other modes like modeRainbowChase(), modeKnightRider(), etc.
+    }
+  } else {
+    pixels.clear(); 
+    finalEffectActive = false;
+    myDFPlayer.pause(); // Stop the DFPlayer when the effect ends
+    Serial.println("Final LED effect completed.");
+  }
+  pixels.show();
 }
 
 void setup() {
@@ -229,106 +262,77 @@ void loop() {
 
     printConnectionStates();
   }
+
+  updateLEDs();
 }
 
 
 
 
-// --- Blocking Mode 0: Rainbow Chase ---
-void modeRainbowChase(unsigned long duration) {
-  unsigned long start = millis();
-  int step = 0;
+// --- Mode 0: Rainbow Chase ---
+void modeRainbowChase() {
+  for (int i = 0; i < NUMPIXELS; i++) {
+    int hue = (i * 256 / NUMPIXELS + animationStep) % 256;
+    pixels.setPixelColor(i, pixels.ColorHSV(hue * 256));
+  }
+  pixels.show();
+  animationStep = (animationStep + 15) % 256;
+}
 
-  while (millis() - start < duration) {
-    for (int i = 0; i < NUMPIXELS; i++) {
-      int hue = (i * 256 / NUMPIXELS + step) % 256;
-      pixels.setPixelColor(i, pixels.ColorHSV(hue * 256));
-    }
-    pixels.show();
-    step = (step + 15) % 256;
-    delay(frameInterval);
+// --- Mode 1: Knight Rider (Bouncing red dot with shifting hue) ---
+void modeKnightRider() {
+  static int position = 0;
+  static int direction = 1;
+
+  for (int i = 0; i < NUMPIXELS; i++) {
+    pixels.setPixelColor(i, 0);
+  }
+
+  pixels.setPixelColor(position, pixels.ColorHSV(hueShift * 256, 255, 255));
+  pixels.show();
+
+  position += direction;
+  if (position == 0 || position == NUMPIXELS - 1) direction = -direction;
+}
+
+// --- Mode 2: Blink All (Fades between on and off with changing color) ---
+void modeBlinkAll() {
+  uint32_t color = (animationStep % 2 == 0) ? pixels.ColorHSV(hueShift * 256, 255, 255) : 0;
+  for (int i = 0; i < NUMPIXELS; i++) {
+    pixels.setPixelColor(i, color);
+  }
+  pixels.show();
+  animationStep++;
+}
+
+// --- Mode 3: Color Wipe (LEDs light up one by one with hue shift) ---
+void modeColorWipe() {
+  static bool turningOn = true;
+
+  if (turningOn) {
+    pixels.setPixelColor(animationStep, pixels.ColorHSV(hueShift * 256, 255, 255));
+  } else {
+    pixels.setPixelColor(animationStep, 0); // Turn off
+  }
+
+  pixels.show();
+  animationStep++;
+
+  if (animationStep >= NUMPIXELS) {
+    animationStep = 0;
+    turningOn = !turningOn; // Switch phase
   }
 }
 
-// --- Blocking Mode 1: Knight Rider ---
-void modeKnightRider(unsigned long duration) {
-  unsigned long start = millis();
-  int position = 0;
-  int direction = 1;
-  int hueShift = 0;
-
-  while (millis() - start < duration) {
-    for (int i = 0; i < NUMPIXELS; i++) {
+// --- Mode 4: Random Flash (Each LED randomly on/off with random hue-shifted colors) ---
+void modeRandomFlash() {
+  for (int i = 0; i < NUMPIXELS; i++) {
+    if (random(10) > 6) {
+      int randomHue = (hueShift + random(64)) % 256;
+      pixels.setPixelColor(i, pixels.ColorHSV(randomHue * 256, 255, 255));
+    } else {
       pixels.setPixelColor(i, 0);
     }
-
-    pixels.setPixelColor(position, pixels.ColorHSV(hueShift * 256, 255, 255));
-    pixels.show();
-
-    position += direction;
-    if (position == 0 || position == NUMPIXELS - 1) direction = -direction;
-
-    hueShift = (hueShift + 3) % 256;
-    delay(frameInterval);
   }
-}
-
-// --- Blocking Mode 2: Blink All ---
-void modeBlinkAll(unsigned long duration) {
-  unsigned long start = millis();
-  int step = 0;
-  int hueShift = 0;
-
-  while (millis() - start < duration) {
-    uint32_t color = (step % 2 == 0) ? pixels.ColorHSV(hueShift * 256, 255, 255) : 0;
-    for (int i = 0; i < NUMPIXELS; i++) {
-      pixels.setPixelColor(i, color);
-    }
-    pixels.show();
-
-    hueShift = (hueShift + 3) % 256;
-    step++;
-    delay(frameInterval);
-  }
-}
-
-// --- Blocking Mode 3: Color Wipe ---
-void modeColorWipe(unsigned long duration) {
-  unsigned long start = millis();
-  bool turningOn = true;
-  int hueShift = 0;
-
-  while (millis() - start < duration) {
-    for (int i = 0; i < NUMPIXELS; i++) {
-      if (turningOn) {
-        pixels.setPixelColor(i, pixels.ColorHSV(hueShift * 256, 255, 255));
-      } else {
-        pixels.setPixelColor(i, 0);
-      }
-      pixels.show();
-      delay(frameInterval);
-    }
-    turningOn = !turningOn;
-    hueShift = (hueShift + 16) % 256;
-  }
-}
-
-// --- Blocking Mode 4: Random Flash ---
-void modeRandomFlash(unsigned long duration) {
-  unsigned long start = millis();
-  int hueShift = 0;
-
-  while (millis() - start < duration) {
-    for (int i = 0; i < NUMPIXELS; i++) {
-      if (random(10) > 6) {
-        int randomHue = (hueShift + random(64)) % 256;
-        pixels.setPixelColor(i, pixels.ColorHSV(randomHue * 256, 255, 255));
-      } else {
-        pixels.setPixelColor(i, 0);
-      }
-    }
-    pixels.show();
-    hueShift = (hueShift + 3) % 256;
-    delay(frameInterval);
-  }
+  pixels.show();
 }
