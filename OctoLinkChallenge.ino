@@ -6,11 +6,11 @@
 #define SPEAKER_TX 11 // connects to DFPLayer RX pin
 
 #define NEOPIXEL_PIN 12 // Pin for NeoPixel data line
-#define NUMPIXELS 20 // Number of NeoPixels
+#define NUMPIXELS 18 // Number of NeoPixels
 
 
 #define CHECK_CONNECTION_INTERVAL 100 // Interval to check connections in milliseconds
-#define EFFECT_DURATION 20000 // Duration of the final LED effect in milliseconds
+#define EFFECT_DURATION 12000 // Duration of the final LED effect in milliseconds
 
 
 // Define different mp3 files
@@ -22,6 +22,7 @@
 #define MP3_FILE_ELEVATION 6  // on SD card, file name: /mp3/0006.mp3
 #define MP3_FILE_MAJESTIC 7   // on SD card, file name: /mp3/0007.mp3
 #define MP3_FILE_VICTORY 8    // on SD card, file name: /mp3/0008.mp3
+#define MP3_FILE_MARVIN 9    // on SD card, file name: /mp3/0009.mp3
 
 
 
@@ -114,7 +115,7 @@ void printConnectionStates() {
 
 void playFinishedMelody() {
   if(dfPlayerInitialized){
-    myDFPlayer.playMp3Folder(MP3_FILE_VICTORY);
+    myDFPlayer.playMp3Folder(MP3_FILE_MARVIN);
   }
   //myDFPlayer.playMp3Folder(MP3_FILE_WINNING);
   //myDFPlayer.playMp3Folder(MP3_FILE_FANFARE);
@@ -151,7 +152,11 @@ void runLEDEventFinished() {
 }
 
 void updateLEDs() {
-  if (!finalEffectActive) return;
+  if (!finalEffectActive) {
+    pixels.clear();
+    pixels.show();
+    return;
+  }
 
   unsigned long now = millis();
   // trigger the led animation every 100ms
@@ -232,7 +237,7 @@ void loop() {
     uint8_t numClosedConnections = getNumClosedConnections(connectionStates, numberOfConnections);
     bool allConnectionsClosed = false;
     if (numClosedConnections != previousNumClosedConnections) {
-      allConnectionsClosed = (numClosedConnections == 4);
+      allConnectionsClosed = (numClosedConnections == numberOfConnections);
     }
 
 
